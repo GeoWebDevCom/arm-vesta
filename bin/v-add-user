@@ -22,7 +22,9 @@ source $VESTA/func/main.sh
 source $VESTA/conf/vesta.conf
 
 is_user_free() {
-    check_sysuser=$(cut -f 1 -d : /etc/passwd | grep -w "$user" )
+    #check_sysuser=$(cut -f 1 -d : /etc/passwd | grep -w "$user" )
+    # fix vy teryanik  commit ec7994a402db48844b01964a2a57c19acff83708
+    check_sysuser=$(cut -f 1 -d : /etc/passwd | grep "^$user$" )
     if [ ! -z "$check_sysuser" ] || [ -e "$USER_DATA" ]; then
         echo "Error: user $user exists"
         log_event "$E_EXISTS" "$EVENT"
