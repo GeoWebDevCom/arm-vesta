@@ -44,7 +44,17 @@ case $(head -n1 /etc/issue | cut -f 1 -d ' ') in
     *)          type="rhel" ;;
 esac
 
-echo '*********************************************************\n'
+# Printing nice ascii aslogo
+clear
+echo
+echo ' _|      _|  _|_|_|_|    _|_|_|  _|_|_|_|_|    _|_|'
+echo ' _|      _|  _|        _|            _|      _|    _|'
+echo ' _|      _|  _|_|_|      _|_|        _|      _|_|_|_|'
+echo '   _|  _|    _|              _|      _|      _|    _|'
+echo '     _|      _|_|_|_|  _|_|_|        _|      _|    _|'
+echo
+echo '                                  Vesta Control Panel'
+echo -e "\n\n"
 read -p 'Would you like to download new vts-install-$type.sh  [y/n]: ' answer
     if [ "$answer" != 'y' ] && [ "$answer" != 'Y'  ]; then
         # Check wget
