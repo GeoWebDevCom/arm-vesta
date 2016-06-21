@@ -44,28 +44,43 @@ case $(head -n1 /etc/issue | cut -f 1 -d ' ') in
     *)          type="rhel" ;;
 esac
 
-# Check wget
-if [ -e '/usr/bin/wget' ]; then
-    wget http://vestacp.com/pub/vst-install-$type.sh -O vst-install-$type.sh
-    if [ "$?" -eq '0' ]; then
-        bash vst-install-$type.sh $*
-        exit
-    else
-        echo "Error: vst-install-$type.sh download failed."
-        exit 1
-    fi
-fi
+echo '*********************************************************\n'
+read -p 'Would you like to download new vts-install-$type.sh  [y/n]: ' answer
+    if [ "$answer" != 'y' ] && [ "$answer" != 'Y'  ]; then
+        # Check wget
+        if [ -e '/usr/bin/wget' ]; then
+                bash vst-install-$type.sh $*
+                exit
+        fi
 
-# Check curl
-if [ -e '/usr/bin/curl' ]; then
-    curl -O http://vestacp.com/pub/vst-install-$type.sh
-    if [ "$?" -eq '0' ]; then
-        bash vst-install-$type.sh $*
-        exit
+        # Check curl
+        if [ -e '/usr/bin/curl' ]; then
+                bash vst-install-$type.sh $*
+        fi
     else
-        echo "Error: vst-install-$type.sh download failed."
-        exit 1
+        # Check wget
+        if [ -e '/usr/bin/wget' ]; then
+            wget http://vestacp.com/pub/vst-install-$type.sh -O vst-install-$type.sh
+            if [ "$?" -eq '0' ]; then
+                bash vst-install-$type.sh $*
+                exit
+            else
+                echo "Error: vst-install-$type.sh download failed."
+                exit 1
+            fi
+        fi
+
+        # Check curl
+        if [ -e '/usr/bin/curl' ]; then
+            curl -O http://vestacp.com/pub/vst-install-$type.sh
+            if [ "$?" -eq '0' ]; then
+                bash vst-install-$type.sh $*
+                exit
+            else
+                echo "Error: vst-install-$type.sh download failed."
+                exit 1
+            fi
+        fi
     fi
-fi
 
 exit

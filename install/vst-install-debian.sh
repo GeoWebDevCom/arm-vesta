@@ -17,31 +17,32 @@ release=$(cat /etc/issue|grep -o [0-9]|head -n1)
 codename="$(cat /etc/os-release |grep VERSION= |cut -f 2 -d \(|cut -f 1 -d \))"
 vestacp="http://$CHOST/$VERSION/$release"
 
+ 
 if [ "$release" -eq 8 ]; then
     software="nginx apache2 apache2-utils apache2.2-common
         apache2-suexec-custom libapache2-mod-ruid2 libapache2-mod-rpaf
         libapache2-mod-fcgid libapache2-mod-php5 php5 php5-common php5-cgi
         php5-mysql php5-curl php5-fpm php5-pgsql awstats webalizer vsftpd
         proftpd-basic bind9 exim4 exim4-daemon-heavy clamav-daemon
-        spamassassin dovecot-imapd dovecot-pop3d roundcube-core
-        roundcube-mysql roundcube-plugins mysql-server mysql-common
+        spamassassin dovecot-imapd dovecot-pop3d mysql-server mysql-common
         mysql-client postgresql postgresql-contrib phppgadmin phpMyAdmin mc
         flex whois rssh git idn zip sudo bc ftp lsof ntpdate rrdtool quota
         e2fslibs bsdutils e2fsprogs curl imagemagick fail2ban dnsutils
-        bsdmainutils cron vesta vesta-nginx vesta-php"
+        bsdmainutils cron "
 else
     software="nginx apache2 apache2-utils apache2.2-common
         apache2-suexec-custom libapache2-mod-ruid2 libapache2-mod-rpaf
         libapache2-mod-fcgid libapache2-mod-php5 php5 php5-common php5-cgi
         php5-mysql php5-curl php5-fpm php5-pgsql awstats webalizer vsftpd
         proftpd-basic proftpd-mod-vroot bind9 exim4 exim4-daemon-heavy
-        clamav-daemon spamassassin dovecot-imapd dovecot-pop3d roundcube-core
-        roundcube-mysql roundcube-plugins mysql-server mysql-common
+        clamav-daemon spamassassin dovecot-imapd dovecot-pop3d mysql-server mysql-common
         mysql-client postgresql postgresql-contrib phppgadmin phpMyAdmin mc
         flex whois rssh git idn zip sudo bc ftp lsof ntpdate rrdtool quota
         e2fslibs bsdutils e2fsprogs curl imagemagick fail2ban dnsutils
-        bsdmainutils cron vesta vesta-nginx vesta-php"
+        bsdmainutils cron"
 fi
+software_backports="roundcube-core roundcube-mysql roundcube-plugins"
+software_vestacp="vesta vesta-nginx vesta-php"
 
 # Defining help function
 help() {
@@ -385,6 +386,7 @@ if [ -z "$email" ]; then
     email="admin@$servername"
 fi
 
+
 # Defining backup directory
 vst_backups="/root/vst_install_backups/$(date +%s)"
 echo "Installation backup directory: $vst_backups"
@@ -393,6 +395,27 @@ echo "Installation backup directory: $vst_backups"
 echo -e "\n\n\n\nInstallation will take about 15 minutes ...\n"
 sleep 5
 
+#----------------------------------------------------------#
+#            Some fixies by gemi69@gmail.com               #
+#----------------------------------------------------------#
+
+#backup password
+echo -e "[ADMIN]\npassword='$vpass'\n[EMAIL]\nemail='$email'\n[HOSTNAME]\nhostname='$servername'\n" > /root/.vst-install-notes
+
+#fix tmp permissions
+chown root:root /tmp
+chmod 1777 /tmp
+
+#clamav permission fix
+# if [ "$clamd" = 'yes' ]; then
+#     sudo crontab -e > tmp_cron
+#     #echo new cron into cron file
+#     echo -e "@reboot mkdir /var/run/clamav/" >> tmp_cron #schedule the delete script
+#     echo -e "@reboot chown clam:mail /var/run/clamav/" >> tmp_cron     #schedule the merge script
+#     #install new cron file
+#     crontab tmp_cron
+#     rm tmp_cron
+# fi
 
 #----------------------------------------------------------#
 #                      Checking swap                       #
@@ -418,21 +441,23 @@ check_result $? 'apt-get upgrade failed'
 
 # Installing nginx repo
 apt=/etc/apt/sources.list.d
-echo "deb http://nginx.org/packages/debian/ $codename nginx" > $apt/nginx.list
-wget http://nginx.org/keys/nginx_signing.key -O /tmp/nginx_signing.key
-apt-key add /tmp/nginx_signing.key
+# echo "deb http://nginx.org/packages/debian/ $codename nginx" > $apt/nginx.list
+# wget http://nginx.org/keys/nginx_signing.key -O /tmp/nginx_signing.key
+# apt-key add /tmp/nginx_signing.key
+
+echo "deb http://http.debian.net/debian $codename-backports main" > $apt/backports.list
 
 # Installing vesta repo
-echo "deb http://$RHOST/$codename/ $codename vesta" > $apt/vesta.list
-wget $CHOST/deb_signing.key -O deb_signing.key
-apt-key add deb_signing.key
+# echo "deb http://$RHOST/$codename/ $codename vesta" > $apt/vesta.list
+# wget $CHOST/deb_signing.key -O deb_signing.key
+# apt-key add deb_signing.key
 
 
 #----------------------------------------------------------#
 #                         Backup                           #
 #----------------------------------------------------------#
 
-# Creating backup directory tree
+#Creating backup directory tree
 mkdir -p $vst_backups
 cd $vst_backups
 mkdir nginx apache2 php5 php5-fpm vsftpd proftpd bind exim4 dovecot clamd
@@ -497,11 +522,11 @@ service vesta stop > /dev/null 2>&1
 cp -r /usr/local/vesta/* $vst_backups/vesta > /dev/null 2>&1
 apt-get -y remove vesta vesta-nginx vesta-php > /dev/null 2>&1
 apt-get -y purge vesta vesta-nginx vesta-php > /dev/null 2>&1
-rm -rf /usr/local/vesta > /dev/null 2>&1
+# rm -rf /usr/local/vesta > /dev/null 2>&1
 
 
 #----------------------------------------------------------#
-#                     Package Excludes                     #
+#                     Package Exludes                      #
 #----------------------------------------------------------#
 
 # Excluding packages
@@ -566,6 +591,7 @@ if [ "$iptables" = 'no' ] || [ "$fail2ban" = 'no' ]; then
     software=$(echo "$software" | sed -e 's/fail2ban//')
 fi
 
+echo -e "[PACKAGES]\nmain='$software'\nbackports='$software_backports'\nvesta='$software_vestacp'\n" >> /root/.vst-install-notes
 
 #----------------------------------------------------------#
 #                     Install packages                     #
@@ -582,6 +608,10 @@ chmod a+x /usr/sbin/policy-rc.d
 apt-get -y install $software
 check_result $? "apt-get install failed"
 
+# Install apt backports packages
+apt-get -y -t $codename-backports install $software_backports
+check_result $? "apt-get backports install failed"
+
 # Restore  policy
 rm -f /usr/sbin/policy-rc.d
 
@@ -595,7 +625,7 @@ sed -i "s/rdAuthentication no/rdAuthentication yes/g" /etc/ssh/sshd_config
 service ssh restart
 
 # AppArmor
-#aa-complain /usr/sbin/named
+# aa-complain /usr/sbin/named
 
 # Disable awstats cron
 rm -f /etc/cron.d/awstats
@@ -621,12 +651,24 @@ sed -i 's/#allowsftp/allowsftp/' /etc/rssh.conf
 sed -i 's/#allowrsync/allowrsync/' /etc/rssh.conf
 chmod 755 /usr/bin/rssh
 
+#----------------------------------------------------------#
+#                  Fix VESTA package                       #
+#----------------------------------------------------------#
+
+# just in case
+# chown root:root -R /usr/local/vesta/
+find /usr/local/vesta/ -type d -print0 | xargs -0 chmod 755
+find /usr/local/vesta/ -type f -print0 | xargs -0 chmod 644
+find /usr/local/vesta/bin -type f -print0 | xargs -0 chmod 755
+
+cp /usr/local/vesta/install/$os/$release/init.d/vesta /etc/init.d/vesta
+cp /usr/local/vesta/install/$os/$release/lograte.d/vesta /etc/lograte.d/vesta
 
 #----------------------------------------------------------#
 #                     Configure VESTA                      #
 #----------------------------------------------------------#
 
-# Downloading sudo configuration
+# Downlading sudo configuration
 mkdir -p /etc/sudoers.d
 wget $vestacp/sudo/admin -O /etc/sudoers.d/admin
 chmod 440 /etc/sudoers.d/admin
@@ -642,7 +684,7 @@ source /root/.bash_profile
 # Configuring logrotate for vesta logs
 wget $vestacp/logrotate/vesta -O /etc/logrotate.d/vesta
 
-# Building directory tree and creating some blank files for vesta
+# Buidling directory tree and creating some blank files for vesta
 mkdir -p $VESTA/conf $VESTA/log $VESTA/ssl $VESTA/data/ips \
     $VESTA/data/queue $VESTA/data/users $VESTA/data/firewall
 touch $VESTA/data/queue/backup.pipe $VESTA/data/queue/disk.pipe \
@@ -1178,6 +1220,16 @@ check_result $? "vesta start failed"
 
 # Adding notifications
 $VESTA/upd/add_notifications.sh
+
+
+#----------------------------------------------------------#
+#                  Fix ssh permission                      #
+#----------------------------------------------------------#
+# just in case
+chmod 600 /etc/ssh/ssh_host_ecdsa_key
+chmod 600 /etc/ssh/ssh_host_dsa_key
+chmod 600 /etc/ssh/ssh_host_ed25519_key
+chmod 600 /etc/ssh/ssh_host_rsa_key
 
 
 #----------------------------------------------------------#
